@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BeelzeAPK — Wrap any website or HTML into an Android app</title>
+<meta name="theme-color" content="#000000" />
+<link rel="icon" href__="ICON_URL_HERE" type="image/png" />
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{ --line:#000; --muted:#5b5b5b; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; background:#fff; color:#000;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap{ max-width:520px; margin:0 auto; padding:26px 18px 70px; }
+  .screen{ display:none; }
+  .screen.on{ display:block; animation:fade .28s ease both; }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+
+  h1.title{ font-size:31px; font-weight:800; letter-spacing:-.025em; text-align:center; margin:0; }
+  p.sub{ text-align:center; color:var(--muted); font-size:13px; line-height:1.5; margin:7px 0 0; }
+  h2.sect{ font-size:22px; font-weight:800; letter-spacing:-.02em; text-align:center; margin:0; }
+
+  .ring{ display:block; margin:26px auto 24px; width:196px; height:196px; object-fit:contain;
+    animation:spin 20s linear infinite; }
+  .ring.sm{ width:96px; height:96px; margin:14px auto 20px; animation-duration:26s; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .btn{ width:100%; background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:15px 16px; font-size:15px; font-weight:700; color:#000; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:9px; transition:transform .12s, background .12s; }
+  .btn:active{ transform:scale(.985); }
+  .btn.primary{ background:#000; color:#fff; border-color:#000; }
+  .btn.ghost{ background:#fff; }
+  .btn[disabled]{ opacity:.45; cursor:not-allowed; }
+  .btn.sm{ padding:12px; font-size:14px; }
+
+  .logos{ display:flex; align-items:center; justify-content:center; gap:30px; margin:26px 0 8px; }
+  .logos .lg{ height:36px; width:auto; }
+  .logos .lg.a{ animation:bob 2.6s ease-in-out infinite; }
+  .logos .lg.b{ animation:bob 2.6s ease-in-out infinite .4s; }
+  @keyframes bob{
+    0%,100%{ transform:translateY(0) rotate(-4deg); }
+    50%{ transform:translateY(-8px) rotate(4deg); }
+  }
+
+  .lbl{ display:flex; align-items:center; gap:7px; font-size:11px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.07em; color:#333; margin:0 0 7px; }
+  .field{ display:flex; align-items:center; gap:10px; border:1px solid var(--line);
+    border-radius:13px; padding:12px 13px; margin-bottom:4px; background:#fff; }
+  .field input{ border:none; outline:none; width:100%; font-size:14.5px; color:#000;
+    background:transparent; font-family:inherit; }
+  .field input::placeholder{ color:#9a9a9a; }
+  .hint{ font-size:11.5px; color:var(--muted); line-height:1.45; margin:6px 2px 16px; }
+  .err{ font-size:11.5px; color:#c81e1e; font-weight:700; margin:6px 2px 0; display:none; }
+  .ok{ font-size:11.5px; color:#128a3a; font-weight:700; margin:6px 2px 0; display:none; }
+  .err.on,.ok.on{ display:block; }
+
+  .iconbox{ width:126px; height:126px; border:1px solid var(--line); border-radius:24px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;
+    position:relative; margin:0 auto 8px; background:#fff; }
+  .iconbox img{ width:100%; height:100%; object-fit:cover; display:none; }
+  .iconbox .ph{ display:flex; flex-direction:column; align-items:center; gap:7px;
+    font-size:11px; font-weight:700; color:#666; }
+  .iconbox .ov{ position:absolute; inset:0; background:rgba(255,255,255,.9); display:none;
+    align-items:center; justify-content:center; flex-direction:column; gap:6px;
+    font-size:11px; font-weight:800; }
+  .iconbox.busy .ov{ display:flex; }
+
+  .htmlbox{ border:1px dashed var(--line); border-radius:13px; padding:18px 14px; text-align:center;
+    cursor:pointer; margin-bottom:4px; }
+  .htmlbox .t{ font-size:13px; font-weight:700; margin:7px 0 2px; }
+  .htmlbox .s{ font-size:11.5px; color:var(--muted); }
+
+  .divider{ display:flex; align-items:center; gap:12px; margin:20px 0;
+    font-size:11px; font-weight:800; letter-spacing:.08em; color:#777; }
+  .divider:before,.divider:after{ content:""; flex:1; height:1px; background:#000; opacity:.15; }
+
+  .bar{ height:11px; border:1px solid var(--line); border-radius:99px; overflow:hidden; background:#fff; }
+  .bar > i{ display:block; height:100%; width:0%;
+    background:linear-gradient(90deg,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#d946ef,#ef4444,#f59e0b,#a3e635);
+    transition:width .7s cubic-bezier(.22,.61,.36,1); }
+  .stage{ display:flex; align-items:center; justify-content:space-between;
+    font-size:12.5px; font-weight:700; margin:12px 2px 0; }
+  .stage span:last-child{ color:var(--muted); font-weight:700; }
+
+  .modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+    align-items:center; justify-content:center; padding:18px; z-index:60; }
+  .modal.on{ display:flex; animation:fade .2s ease both; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:22px; padding:22px;
+    width:100%; max-width:430px; max-height:88vh; overflow:auto; }
+  .card h3{ font-size:19px; font-weight:800; margin:0 0 4px; text-align:center; }
+  .card p.cp{ font-size:12.5px; color:var(--muted); text-align:center; margin:0 0 18px; line-height:1.5; }
+
+  .plat{ display:flex; align-items:center; gap:13px; border:1px solid var(--line);
+    border-radius:16px; padding:14px; margin-bottom:11px; cursor:pointer; background:#fff;
+    text-align:left; width:100%; font-family:inherit; }
+  .plat .lg{ width:26px; height:26px; object-fit:contain; flex-shrink:0; }
+  .plat .n{ font-size:14.5px; font-weight:800; }
+  .plat .d{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .plat .go{ margin-left:auto; }
+
+  .list{ border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+  .row{ display:flex; align-items:center; gap:11px; padding:13px 14px; border-bottom:1px solid #00000014; }
+  .row:last-child{ border-bottom:none; }
+  .row .rn{ font-size:13.5px; font-weight:800; }
+  .row .rd{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .empty{ border:1px solid var(--line); border-radius:16px; padding:22px; text-align:center;
+    font-size:12.5px; color:var(--muted); }
+
+  #toast{ position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px);
+    background:#000; color:#fff; font-size:12.5px; font-weight:700; padding:11px 16px;
+    border-radius:99px; opacity:0; pointer-events:none; transition:.25s; z-index:90; max-width:92vw; text-align:center; }
+  #toast.on{ opacity:1; transform:translate(-50%,0); }
+
+  svg.lucide{ width:17px; height:17px; flex-shrink:0; }
+  .big svg.lucide{ width:22px; height:22px; }
+  .spin{ animation:spin 1s linear infinite; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ================= 1. HOME ================= -->
+  <section id="s-home" class="screen on">
+    <h1 class="title">BeelzeAPK</h1>
+    <p class="sub">Turn any website or HTML file into a real Android app.</p>
+
+    <img id="ringHome" class="ring" alt="BeelzeAPK" />
+
+    <button id="btnStart" class="btn primary big">
+      <i data-lucide="hammer"></i> Build App
+    </button>
+
+    <div class="logos">
+      <img id="logoApple" class="lg a" alt="iOS" />
+      <img id="logoAndroid" class="lg b" alt="Android" />
+    </div>
+
+    <div style="margin:30px 0 12px;display:flex;align-items:center;justify-content:space-between;">
+      <p class="lbl" style="margin:0;"><i data-lucide="history"></i> Recent apps</p>
+      <button id="btnRefreshRecent" class="btn ghost sm" style="width:auto;padding:7px 10px;font-size:11px;border-radius:9px;">
+        <i data-lucide="refresh-cw"></i> Refresh
+      </button>
+    </div>
+    <div id="recent"></div>
+  </section>
+
+  <!-- ================= 2. FORM ================= -->
+  <section id="s-form" class="screen">
+    <button id="btnBackHome" class="btn ghost sm" style="width:auto;padding:8px 11px;font-size:12px;border-radius:10px;margin-bottom:16px;">
+      <i data-lucide="arrow-left"></i> Back
+    </button>
+
+    <h2 class="sect">Add app details</h2>
+    <p class="sub">Everything here goes straight into the Android build.</p>
+    <img id="ringForm" class="ring sm" alt="BeelzeAPK" />
+
+    <!-- APP NAME -->
+    <p class="lbl"><i data-lucide="type"></i> App name</p>
+    <div class="field">
+      <i data-lucide="tag"></i>
+      <input id="fName" type="text" placeholder="My Store" maxlength="30" autocomplete="off" />
+    </div>
+    <p class="hint">This is the name shown under the icon on the phone.</p>
+
+    <!-- ICON -->
+    <p class="lbl"><i data-lucide="image"></i> App icon</p>
+    <div id="iconBox" class="iconbox">
+      <img id="iconPrev" alt="App icon" />
+      <div class="ph"><i data-lucide="upload"></i> Upload 512×512</div>
+      <div class="ov"><i data-lucide="loader-2" class="spin"></i> Uploading</div>
+    </div>
+    <input id="fIcon" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" />
+    <p class="hint" style="text-align:center;">Square PNG works best. Stored in your R2 bucket.</p>
+
+    <!-- TARGET URL -->
+    <p class="lbl"><i data-lucide="link"></i> Website URL</p>
+    <div class="field">
+      <i data-lucide="globe"></i>
+      <input id="fUrl" type="url" placeholder="https://darkmasterstore.beelzeapps.co.za" autocomplete="off" />
+    </div>
+    <p class="hint">The app opens this link full screen in a WebView.</p>
+
+    <div class="divider">OR</div>
+
+    <!-- HTML FILE -->
+    <p class="lbl"><i data-lucide="file-code"></i> Upload HTML file</p>
+    <div id="htmlBox" class="htmlbox">
+      <i data-lucide="file-up"></i>
+      <p class="t" id="htmlName">Choose an .html file</p>
+      <p class="s">We wrap the HTML itself — no domain needed.</p>
+    </div>
+    <input id="fHtml" type="file" accept=".html,.htm,text/html" style="display:none" />
+    <p class="hint">Use this when the app is a single HTML file (or a zip of one) instead of a live site.</p>
+
+    <!-- VERSION NAME -->
+    <p class="lbl"><i data-lucide="badge"></i> Version name</p>
+    <div class="field">
+      <i data-lucide="git-branch"></i>
+      <input id="fVerName" type="text" value="1.0.0" placeholder="1.0.0" autocomplete="off" />
+    </div>
+    <p class="hint">Shown in Android settings — e.g. 1.0.0, 1.2.5.</p>
+
+    <!-- VERSION CODE -->
+    <p class="lbl"><i data-lucide="hash"></i> Version code</p>
+    <div class="field">
+      <i data-lucide="binary"></i>
+      <input id="fVerCode" type="number" value="1" min="1" step="1" placeholder="1" />
+    </div>
+    <p class="hint">A whole number Android uses to tell versions apart. Every update must be higher than the last (1 → 2 → 3).</p>
+
+    <!-- PACKAGE -->
+    <p class="lbl"><i data-lucide="package"></i> Package name</p>
+    <div class="field">
+      <i data-lucide="at-sign"></i>
+      <input id="fPkg" type="text" placeholder="com.beelze.mystore" autocomplete="off" spellcheck="false" />
+    </div>
+    <p class="err" id="pkgErr"><i data-lucide="x-circle" style="display:inline;vertical-align:-3px;"></i> Use lowercase letters, numbers and dots — like com.beelze.mystore</p>
+    <p class="ok" id="pkgOk"><i data-lucide="check-circle-2" style="display:inline;vertical-align:-3px;"></i> This package name is free</p>
+    <p class="hint">This is the <b>package name</b> (application ID) — the permanent ID Android uses. Reverse your domain: <b>com.beelze.mystore</b>. It can never change after publishing.</p>
+
+    <div style="height:8px"></div>
+    <button id="btnGenerate" class="btn primary big" style="margin-top:8px;">
+      <i data-lucide="cpu"></i> Generate APK
+    </button>
+    <p class="hint" style="text-align:center;">You'll pick Android or iOS next.</p>
+  </section>
+
+  <!-- ================= 3. BUILDING ================= -->
+  <section id="s-build" class="screen">
+    <h2 class="sect">Building your app</h2>
+    <p class="sub" id="buildSub">Hang tight — this runs on a real Android build machine.</p>
+
+    <img id="ringBuild" class="ring" alt="BeelzeAPK" />
+
+    <div class="logos" style="margin:4px 0 22px;">
+      <img id="logoApple2" class="lg a" alt="iOS" />
+      <img id="logoAndroid2" class="lg b" alt="Android" />
+    </div>
+
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="stage">
+      <span id="stageText">Queued…</span>
+      <span id="stagePct">0%</span>
+    </div>
+    <p class="hint" id="buildLog" style="margin-top:14px;font-family:ui-monospace,monospace;font-size:11px;"></p>
+  </section>
+
+  <!-- ================= 4. DONE ================= -->
+  <section id="s-done" class="screen">
+    <h2 class="sect">Your app is ready</h2>
+    <p class="sub" id="doneSub">Signed and packaged.</p>
+    <img id="ringDone" class="ring sm" alt="BeelzeAPK" />
+
+    <div class="list" style="margin-bottom:18px;">
+      <div class="row">
+        <i data-lucide="package"></i>
+        <div><div class="rn" id="doneName">App</div><div class="rd" id="donePkg">com.example.app</div></div>
+      </div>
+      <div class="row">
+        <i data-lucide="git-branch"></i>
+        <div><div class="rn" id="doneVer">1.0.0</div><div class="rd">version code <span id="doneCode">1</span></div></div>
+      </div>
+      <div class="row">
+        <i data-lucide="hard-drive"></i>
+        <div><div class="rn" id="doneSize">APK</div><div class="rd">saved to your bucket</div></div>
+      </div>
+    </div>
+
+    <button id="btnDownload" class="btn primary big">
+      <i data-lucide="download"></i> Download APK
+    </button>
+    <div style="height:10px"></div>
+    <button id="btnAnother" class="btn ghost">
+      <i data-lucide="plus"></i> Build another app
+    </button>
+    <p class="hint" style="text-align:center;margin-top:16px;">
+      Install: open the file on the phone → allow "Install unknown apps" for your browser → Install.
+    </p>
+  </section>
+</div>
+
+<!-- ================= PLATFORM MODAL ================= -->
+<div id="mPlat" class="modal">
+  <div class="card">
+    <h3>Choose your platform</h3>
+    <p class="cp">Pick where this app is going to live.</p>
+
+    <button class="plat" id="pickAndroid">
+      <img id="modalAndroid" class="lg" alt="Android" />
+      <div><div class="n">Android</div><div class="d">Real .apk file — installs on any phone</div></div>
+      <i data-lucide="arrow-right" class="go"></i>
+    </button>
+
+    <button class="plat" id="pickIos">
+      <img id="modalApple" class="lg" alt="iOS" />
+      <div><div class="n">iOS</div><div class="d">.ipa file — needs a Mac + Apple Developer account</div></div>
+      <i data-lucide="info" class="go"></i>
+    </button>
+
+    <button id="btnClosePlat" class="btn ghost sm" style="margin-top:6px;">Cancel</button>
+  </div>
+</div>
+
+<!-- ================= iOS INFO MODAL ================= -->
+<div id="mIos" class="modal">
+  <div class="card">
+    <h3>iOS is different</h3>
+    <p class="cp">
+      Apple doesn't allow an .ipa to be built or signed by a website. iOS apps must be compiled in Xcode on a Mac
+      and signed with a paid Apple Developer account (about $99/year), then installed through TestFlight or the App Store.
+      There is no sideloading an .ipa from a download link on iPhone.
+    </p>
+    <button id="btnIosOk" class="btn primary">Got it — build for Android</button>
+    <div style="height:9px"></div>
+    <button id="btnIosClose" class="btn ghost sm">Close</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   CONFIG — only these 3 things need your values
+   ============================================================ */
+
+// 1) Firebase (same project as Dark Master Store)
+const firebaseConfig = {
+  apiKey: "AIzaSy...YOUR_REAL_KEY",
+  authDomain: "dark-master-store.firebaseapp.com",
+  projectId: "dark-master-store",
+  storageBucket: "dark-master-store.firebasestorage.app",
+  messagingSenderId: "245130963951",
+  appId: "1:245130963951:web:50cdae51f5c59fa8ad641a"
+};
+
+// 2) Cloudflare R2 (your existing storage worker)
+const R2_WORKER_URL      = "https://beelzechat-storage-worker.white-mouse-5467.workers.dev";
+const R2_PUBLIC_BUCKET   = "https://pub-730c026431a641358f01194bd545a5f4.r2.dev";
+
+// 3) The builder worker that compiles + signs the APK
+//    POST {BUILD_API}/build            -> { jobId }
+//    GET  {BUILD_API}/job/{jobId}      -> { status, progress, stage, apkUrl, size, log }
+//    GET  {BUILD_API}/download/{jobId} -> apk bytes (attachment)
+const BUILD_API = "https://beelzeapk-builder.YOUR-SUBDOMAIN.workers.dev";
+
+// The three images you gave me — paste the R2 links once uploaded
+const IMG_RING    = "";
+const IMG_APPLE   = "";
+const IMG_ANDROID = "";
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, doc, setDoc, getDoc,
+  query, orderBy, limit, getDocs, where, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const BUILDS = "beelzeapk_builds";   // light records only
+const HTMLS  = "beelzeapk_html";     // heavy HTML payloads kept apart
+
+/* ---------- fallback artwork (used until you paste your image links) ---------- */
+const FALLBACK = {
+  ring: "data:image/svg+xml;utf8," + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+      <g fill="none" stroke-width="9" stroke-linecap="round">
+        <circle cx="100" cy="100" r="72" stroke="#22c55e" stroke-dasharray="4 22" stroke-dashoffset="0"/>
+        <circle cx="100" cy="100" r="72" stroke="#06b6d4" stroke-dasharray="4 22" stroke-dashoffset="-26"/>
+        <circle cx="100" cy="100" r="72" stroke="#3b82f6" stroke-dasharray="4 22" stroke-dashoffset="-52"/>
+        <circle cx="100" cy="100" r="72" stroke="#8b5cf6" stroke-dasharray="4 22" stroke-dashoffset="-78"/>
+        <circle cx="100" cy="100" r="72" stroke="#d946ef" stroke-dasharray="4 22" stroke-dashoffset="-104"/>
+        <circle cx="100" cy="100" r="72" stroke="#ef4444" stroke-dasharray="4 22" stroke-dashoffset="-130"/>
+        <circle cx="100" cy="100" r="72" stroke="#f59e0b" stroke-dasharray="4 22" stroke-dashoffset="-156"/>
+        <circle cx="100" cy="100" r="72" stroke="#a3e635" stroke-dasharray="4 22" stroke-dashoffset="-182"/>
+      </g></svg>`),
+  apple: "data:image/svg+xml;utf8," + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/>
+      <path d="M10 2c1 .5 2 2 2 5"/></svg>`),
+  android: "data:image/svg+xml;utf8," + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 10a6 6 0 0 1 12 0v6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-6Z"/>
+      <path d="M8 5 6.6 2.8M16 5l1.4-2.2"/><circle cx="9.6" cy="8.4" r=".7"/><circle cx="14.4" cy="8.4" r=".7"/>
+      <path d="M3.6 11v4M20.4 11v4"/></svg>`)
+};
+
+document.querySelectorAll("#ringHome,#ringForm,#ringBuild,#ringDone")
+  .forEach(el => el.src = IMG_RING || FALLBACK.ring);
+document.querySelectorAll("#logoApple,#logoApple2,#modalApple")
+  .forEach(el => el.src = IMG_APPLE || FALLBACK.apple);
+document.querySelectorAll("#logoAndroid,#logoAndroid2,#modalAndroid")
+  .forEach(el => el.src = IMG_ANDROID || FALLBACK.android);
+
+/* ---------- icons: force 1px strokes everywhere ---------- */
+function icons(){
+  if (window.lucide) window.lucide.createIcons();
+  document.querySelectorAll("svg.lucide").forEach(s => {
+    s.setAttribute("stroke-width", "1");
+    s.style.width  = s.style.width  || "17px";
+    s.style.height = s.style.height || "17px";
+  });
+}
+icons();
+
+/* ---------- helpers ---------- */
+const $  = id => document.getElementById(id);
+const go = name => {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  $("s-" + name).classList.add("on");
+  window.scrollTo({ top: 0, behavior: "instant" });
+  icons();
+};
+let toastT;
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove("on"), 3200);
+}
+
+/* ============================================================
+   R2 UPLOAD — same worker the store uses
+   ============================================================ */
+async function compressIcon(file){
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const side = 512;
+    const c = document.createElement("canvas");
+    c.width = side; c.height = side;
+    const ctx = c.getContext("2d");
+    const scale = Math.min(side / bmp.width, side / bmp.height);
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    ctx.clearRect(0, 0, side, side);
+    ctx.drawImage(bmp, (side - w) / 2, (side - h) / 2, w, h);
+    const blob = await new Promise(r => c.toBlob(r, "image/png"));
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".png", { type: "image/png" });
+  } catch (e) { return file; }
+}
+
+async function uploadToR2(file){
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(R2_WORKER_URL, { method: "POST", body: fd });
+  if (!res.ok) throw new Error("Upload failed (" + res.status + ")");
+  const data = await res.json();
+  const key = data.key || data.file || data.filename || data.name;
+  if (key) return R2_PUBLIC_BUCKET.replace(/\/+$/, "") + "/" + key;
+  if (data.url) return data.url;
+  throw new Error("Upload worker returned no file link");
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = { iconUrl: "", htmlUrl: "", htmlName: "", job: null, timer: null };
+
+/* ---------- icon picker ---------- */
+$("iconBox").addEventListener("click", () => $("fIcon").click());
+$("fIcon").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const box = $("iconBox");
+  box.classList.add("busy");
+  try {
+    const url = await uploadToR2(await compressIcon(f));
+    state.iconUrl = url;
+    $("iconPrev").src = url;
+    $("iconPrev").style.display = "block";
+    box.querySelector(".ph").style.display = "none";
+    toast("Icon uploaded");
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    box.classList.remove("busy");
+    e.target.value = "";
+    icons();
+  }
+});
+
+/* ---------- html picker ---------- */
+$("htmlBox").addEventListener("click", () => $("fHtml").click());
+$("fHtml").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  $("htmlName").textContent = "Uploading " + f.name + "…";
+  try {
+    const url = await uploadToR2(new File([f], f.name, { type: "text/html" }));
+    state.htmlUrl = url;
+    state.htmlName = f.name;
+    $("htmlName").textContent = f.name;
+    toast("HTML uploaded");
+  } catch (err) {
+    $("htmlName").textContent = "Choose an .html file";
+    toast(err.message);
+  }
+  e.target.value = "";
+});
+
+/* ============================================================
+   VALIDATION
+   ============================================================ */
+const PKG_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
+
+function cleanPkg(v){
+  return v.toLowerCase().replace(/[^a-z0-9._]/g, "").replace(/\.{2,}/g, ".").replace(/^\.+|\.+$/g, "");
+}
+$("fPkg").addEventListener("input", e => { e.target.value = cleanPkg(e.target.value); });
+$("fName").addEventListener("input", e => {
+  if (!$("fPkg").dataset.touched && e.target.value.trim()) {
+    $("fPkg").value = "com.beelze." + e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+});
+$("fPkg").addEventListener("focus", e => { e.target.dataset.touched = "1"; });
+
+$("fPkg").addEventListener("blur", async () => {
+  const pkg = $("fPkg").value.trim();
+  $("pkgErr").classList.remove("on");
+  $("pkgOk").classList.remove("on");
+  if (!pkg) return;
+  if (!PKG_RE.test(pkg)) { $("pkgErr").classList.add("on"); return; }
+  try {
+    const snap = await getDocs(query(collection(db, BUILDS), where("packageName", "==", pkg), limit(1)));
+    if (snap.empty) $("pkgOk").classList.add("on");
+    else { $("pkgErr").textContent = "This package name is already published — pick another."; $("pkgErr").classList.add("on"); }
+  } catch (e) { /* offline: let the build check it */ }
+});
+
+function validate(){
+  const name = $("fName").value.trim();
+  if (name.length < 2) { toast("Add an app name"); return null; }
+  if (!state.iconUrl) { toast("Upload an app icon"); return null; }
+  const url = $("fUrl").value.trim();
+  if (!url && !state.htmlUrl) { toast("Add a website URL or upload an HTML file"); return null; }
+  if (url && !/^https?:\/\/.+\..+/i.test(url)) { toast("The URL must start with https://"); return null; }
+  const verName = $("fVerName").value.trim();
+  if (!/^\d+(\.\d+){0,3}$/.test(verName)) { toast("Version name looks like 1.0.0"); return null; }
+  const verCode = parseInt($("fVerCode").value, 10);
+  if (!Number.isInteger(verCode) || verCode < 1) { toast("Version code must be 1 or higher"); return null; }
+  const pkg = $("fPkg").value.trim();
+  if (!PKG_RE.test(pkg)) { $("pkgErr").classList.add("on"); toast("Fix the package name"); return null; }
+
+  return {
+    appName: name,
+    packageName: pkg,
+    versionName: verName,
+    versionCode: verCode,
+    iconUrl: state.iconUrl,
+    targetUrl: url || "",
+    htmlUrl: state.htmlUrl || ""
+  };
+}
+
+/* ============================================================
+   PLATFORM CHOICE
+   ============================================================ */
+let pending = null;
+
+$("btnGenerate").addEventListener("click", () => {
+  const data = validate();
+  if (!data) return;
+  pending = data;
+  $("mPlat").classList.add("on");
+  icons();
+});
+$("btnClosePlat").addEventListener("click", () => $("mPlat").classList.remove("on"));
+$("pickIos").addEventListener("click", () => {
+  $("mPlat").classList.remove("on");
+  $("mIos").classList.add("on");
+  icons();
+});
+$("btnIosClose").addEventListener("click", () => $("mIos").classList.remove("on"));
+$("btnIosOk").addEventListener("click", () => {
+  $("mIos").classList.remove("on");
+  $("mPlat").classList.add("on");
+});
+$("pickAndroid").addEventListener("click", () => {
+  $("mPlat").classList.remove("on");
+  startBuild("android");
+});
+
+/* ============================================================
+   BUILD
+   ============================================================ */
+const STAGE_LABEL = {
+  queued:    "Queued for the build machine",
+  preparing: "Preparing the Android project",
+  building:  "Compiling the app",
+  signing:   "Signing the APK",
+  uploading: "Uploading your APK",
+  ready:     "Finished",
+  failed:    "Build failed"
+};
+const STAGE_BASE = { queued: 6, preparing: 22, building: 58, signing: 84, uploading: 94, ready: 100 };
+
+let creep = null, pct = 0;
+
+function paint(p, text){
+  pct = Math.max(pct, Math.min(p, 100));
+  $("barFill").style.width = pct.toFixed(1) + "%";
+  $("stagePct").textContent = Math.round(pct) + "%";
+  if (text) $("stageText").textContent = text;
+}
+
+function stopCreep(){ clearInterval(creep); creep = null; }
+
+function startBuild(platform){
+  if (BUILD_API.includes("YOUR-SUBDOMAIN")) {
+    toast("Builder worker not connected yet — add its URL in CONFIG");
+    return;
+  }
+  state.job = { ...pending, platform };
+  pct = 0;
+  $("buildSub").textContent = "Android build started for " + pending.appName;
+  $("buildLog").textContent = "";
+  paint(2, "Queued…");
+  go("build");
+
+  // gentle real-time creep so it never looks frozen (never passes 92)
+  stopCreep();
+  creep = setInterval(() => {
+    if (pct < 92) paint(pct + (pct < 60 ? 0.7 : 0.3));
+  }, 900);
+
+  fetch(BUILD_API + "/build", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(state.job)
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.jobId) throw new Error(d.error || "Builder refused the job");
+      state.job.jobId = d.jobId;
+      poll();
+    })
+    .catch(err => failBuild(err.message));
+}
+
+function poll(){
+  state.timer = setInterval(async () => {
+    try {
+      const r = await fetch(BUILD_API + "/job/" + state.job.jobId);
+      const d = await r.json();
+
+      const base = STAGE_BASE[d.status] ?? 10;
+      const real = typeof d.progress === "number" ? d.progress : base;
+      paint(Math.max(real, pct), STAGE_LABEL[d.status] || d.stage || "Working…");
+      if (d.log) $("buildLog").textContent = String(d.log).slice(-400);
+
+      if (d.status === "ready") {
+        clearInterval(state.timer);
+        stopCreep();
+        paint(100, "Finished");
+        await finish(d);
+      } else if (d.status === "failed") {
+        clearInterval(state.timer);
+        failBuild(d.log || d.error || "The build failed");
+      }
+    } catch (e) {
+      // network blip — keep polling
+    }
+  }, 3500);
+}
+
+function failBuild(msg){
+  stopCreep();
+  clearInterval(state.timer);
+  toast(msg);
+  $("buildSub").textContent = "Build failed";
+  $("stageText").textContent = msg;
+  $("barFill").style.background = "#000";
+}
+
+async function finish(d){
+  const j = state.job;
+  const apkUrl = d.apkUrl || (BUILD_API + "/download/" + j.jobId);
+
+  $("doneName").textContent = j.appName;
+  $("donePkg").textContent  = j.packageName;
+  $("doneVer").textContent  = j.versionName;
+  $("doneCode").textContent = j.versionCode;
+  $("doneSize").textContent = d.size ? (d.size / 1048576).toFixed(1) + " MB APK" : "APK";
+  $("btnDownload").dataset.url = apkUrl;
+  $("btnDownload").dataset.file = j.appName.replace(/[^a-z0-9]+/gi, "-") + "-v" + j.versionName + ".apk";
+
+  // light record in Firestore — never the APK or HTML itself
+  try {
+    const rec = {
+      name: j.appName,
+      packageName: j.packageName,
+      versionName: j.versionName,
+      versionCode: j.versionCode,
+      platform: "android",
+      iconUrl: j.iconUrl,
+      targetUrl: j.targetUrl || "",
+      apkUrl,
+      size: d.size || 0,
+      jobId: j.jobId,
+      created_at: serverTimestamp()
+    };
+    const ref = await addDoc(collection(db, BUILDS), rec);
+    if (j.htmlUrl) {
+      await setDoc(doc(db, HTMLS, ref.id), { htmlUrl: j.htmlUrl, name: state.htmlName });
+    }
+  } catch (e) { /* build still downloadable even if the log write fails */ }
+
+  go("done");
+  loadRecent();
+}
+
+$("btnDownload").addEventListener("click", e => {
+  const url = e.currentTarget.dataset.url;
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = e.currentTarget.dataset.file;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+/* ============================================================
+   RECENT APPS — names + dates only
+   ============================================================ */
+async function loadRecent(){
+  const box = $("recent");
+  try {
+    const snap = await getDocs(query(collection(db, BUILDS), orderBy("created_at", "desc"), limit(8)));
+    if (snap.empty) {
+      box.innerHTML = '<div class="empty">No apps built yet. Your first one shows up here.</div>';
+      return;
+    }
+    box.innerHTML = '<div class="list">' + snap.docs.map(d => {
+      const v = d.data();
+      const ts = v.created_at && v.created_at.toDate ? v.created_at.toDate() : null;
+      const when = ts ? ts.toLocaleString("en-ZA", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "just now";
+      return `<div class="row">
+        <i data-lucide="smartphone"></i>
+        <div><div class="rn">${escapeHtml(v.name || "Untitled")}</div>
+        <div class="rd">${escapeHtml(v.packageName || "")} · ${when}</div></div>
+      </div>`;
+    }).join("") + "</div>";
+    icons();
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Recent apps will appear here once Firebase is connected.</div>';
+  }
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+$("btnStart").addEventListener("click", () => go("form"));
+$("btnBackHome").addEventListener("click", () => go("home"));
+$("btnAnother").addEventListener("click", () => {
+  state.iconUrl = ""; state.htmlUrl = ""; state.htmlName = ""; state.job = null;
+  $("iconPrev").style.display = "none";
+  $("iconBox").querySelector(".ph").style.display = "flex";
+  $("htmlName").textContent = "Choose an .html file";
+  $("fName").value = ""; $("fUrl").value = ""; $("fPkg").value = ""; $("fPkg").dataset.touched = "";
+  $("fVerName").value = "1.0.0"; $("fVerCode").value = "1";
+  $("pkgOk").classList.remove("on"); $("pkgErr").classList.remove("on");
+  go("form");
+});
+$("btnRefreshRecent").addEventListener("click", loadRecent);
+
+loadRecent();
+</script>
+</body>
+</html>
